@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Code Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+
+<body>
+  <div class="page-shell">
+    <div class="hero-panel">
+      <div class="hero-copy">
+        <p class="eyebrow">AI-powered analysis</p>
+        <h1>Code review and bug detection, accelerated.</h1>
+        <p class="hero-description">
+          Paste your source code to identify security risks, maintainability issues, and style concerns. The dashboard
+          delivers a quick summary, issue details, and confidence score.
+        </p>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <strong>Security</strong>
+            <p>Spot dangerous patterns like eval/exec and risky code constructs.</p>
+          </div>
+          <div class="feature-card">
+            <strong>Maintainability</strong>
+            <p>Highlight TODO comments, debugging leftovers, and readability issues.</p>
+          </div>
+          <div class="feature-card">
+            <strong>Confidence</strong>
+            <p>Get a quick assessment score so you know how much to trust the result.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-panel card-glass">
+        <div class="panel-header">
+          <div>
+            <p class="panel-title">Analyze your code</p>
+            <p class="panel-subtitle">Upload or paste your snippet below. Analysis runs in real-time as you type.</p>
+          </div>
+          <div class="status-pill" id="status-pill">Ready</div>
+        </div>
+
+        <form id="analyze-form">
+          <label for="language">Language</label>
+          <select id="language" name="language">
+            <option value="python">Python</option>
+            <option value="javascript">JavaScript</option>
+            <option value="java">Java</option>
+          </select>
+
+          <label for="content">Source Code</label>
+          <textarea id="content" name="content" rows="12" placeholder="Paste your code here..."></textarea>
+
+          <div class="button-group">
+            <button type="submit" class="primary-button" id="analyze-button">
+              Analyze Code
+              <span class="button-loader hidden" id="button-loader"></span>
+            </button>
+            <button type="button" class="secondary-button" id="run-button">
+              Run Code
+              <span class="button-loader hidden" id="run-loader"></span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="results-panel card-glass hidden" id="results">
+      <div class="results-header">
+        <div>
+          <p class="panel-title">Analysis Results</p>
+          <p class="panel-subtitle">Review issues and recommendations.</p>
+        </div>
+        <div class="score-badge" id="confidence"></div>
+      </div>
+
+      <div class="summary-block" id="summary"></div>
+
+      <div class="complexity-grid">
+        <div class="complexity-card">
+          <div class="complexity-card-header">
+            <span class="complexity-title">Time Complexity</span>
+            <span class="complexity-value" id="time-complexity">O(1)</span>
+          </div>
+          <p class="complexity-reason" id="time-complexity-reason">Constant execution time.</p>
+        </div>
+
+        <div class="complexity-card">
+          <div class="complexity-card-header">
+            <span class="complexity-title">Space Complexity</span>
+            <span class="complexity-value" id="space-complexity">O(1)</span>
+          </div>
+          <p class="complexity-reason" id="space-complexity-reason">Constant auxiliary storage space.</p>
+        </div>
+      </div>
+
+      <div class="execution-block hidden" id="execution-container">
+        <div class="execution-header">
+          <span class="execution-title">Execution Output</span>
+          <span class="execution-status" id="execution-status">Success</span>
+        </div>
+        <pre class="execution-output" id="execution-output"><code></code></pre>
+      </div>
+
+      <div class="issues-list" id="issues"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+
+</html>
