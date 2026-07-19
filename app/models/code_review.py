@@ -235,6 +235,128 @@ def analyze_code(language: str, content: str) -> Dict[str, Any]:
                 if "Generic exceptions caught" not in summary_parts:
                     summary_parts.append("Generic exceptions caught.")
 
+    elif lang == "cpp":
+        for idx, line in enumerate(lines, start=1):
+            if "strcpy(" in line and not line.strip().startswith("//"):
+                issues.append({
+                    "type": "Security",
+                    "message": "Use of unsafe std::strcpy detected. Risk of buffer overflow. Use std::strncpy or std::string instead.",
+                    "line": idx,
+                    "severity": "high",
+                    "suggestion": "// Use safer std::strncpy or std::string:\n// std::strncpy(dest, src, sizeof(dest) - 1);\n// dest[sizeof(dest) - 1] = '\\0';"
+                })
+                if "Potential buffer overflow" not in summary_parts:
+                    summary_parts.append("Potential buffer overflow.")
+            if "new " in line and not line.strip().startswith("//"):
+                if not any("delete " in l for l in lines):
+                    issues.append({
+                        "type": "Bug Risk",
+                        "message": "Dynamic memory allocation using 'new' detected, but no corresponding 'delete' found in this snippet. Possible memory leak.",
+                        "line": idx,
+                        "severity": "medium",
+                        "suggestion": "// Ensure allocated memory is freed:\n// delete ptr;"
+                    })
+                    if "Potential memory leak" not in summary_parts:
+                        summary_parts.append("Potential memory leak.")
+
+    elif lang == "typescript":
+        for idx, line in enumerate(lines, start=1):
+            if ": any" in line or "as any" in line:
+                issues.append({
+                    "type": "Style",
+                    "message": "Avoid using 'any' type in TypeScript. Use stricter types or 'unknown' to preserve compile-time safety.",
+                    "line": idx,
+                    "severity": "low",
+                    "suggestion": "// Define type or interface explicitly:\n// function update(user: User): void;"
+                })
+                if "Unsafe type definitions" not in summary_parts:
+                    summary_parts.append("Unsafe type definitions.")
+            if "!." in line:
+                issues.append({
+                    "type": "Bug Risk",
+                    "message": "Non-null assertion operator (!.) used. This bypasses compile-time checks and can cause runtime crashes if the value is null.",
+                    "line": idx,
+                    "severity": "medium",
+                    "suggestion": "// Replace non-null assertion with safe optional chaining:\n// console.log(value?.length);"
+                })
+                if "Non-null assertion risk" not in summary_parts:
+                    summary_parts.append("Non-null assertion risk.")
+
+    elif lang == "csharp":
+        for idx, line in enumerate(lines, start=1):
+            if "SELECT " in line and " + " in line and not line.strip().startswith("//"):
+                issues.append({
+                    "type": "Security",
+                    "message": "SQL query built via string concatenation. This exposes the database to SQL Injection attacks.",
+                    "line": idx,
+                    "severity": "high",
+                    "suggestion": "// Use parameterized SQL queries:\n// SqlCommand cmd = new SqlCommand(\"SELECT * FROM Users WHERE Username = @Username\", conn);\n// cmd.Parameters.AddWithValue(\"@Username\", user);"
+                })
+                if "SQL Injection risk" not in summary_parts:
+                    summary_parts.append("SQL Injection risk.")
+
+    elif lang == "go":
+        for idx, line in enumerate(lines, start=1):
+            if ", _ :=" in line or ", _ =" in line:
+                issues.append({
+                    "type": "Bug Risk",
+                    "message": "Error return value ignored using blank identifier '_'. Always verify returned errors in Go.",
+                    "line": idx,
+                    "severity": "medium",
+                    "suggestion": "file, err := os.Open(\"config.json\")\nif err != nil {\n    log.Fatal(err)\n}"
+                })
+                if "Ignored error return" not in summary_parts:
+                    summary_parts.append("Ignored error return.")
+
+    elif lang == "c":
+        for idx, line in enumerate(lines, start=1):
+            if "strcpy(" in line and not line.strip().startswith("//"):
+                issues.append({
+                    "type": "Security",
+                    "message": "Unsafe strcpy function detected. This does not perform bounds checking and is vulnerable to buffer overflows.",
+                    "line": idx,
+                    "severity": "high",
+                    "suggestion": "// Use strncpy instead:\n// strncpy(dest, src, sizeof(dest) - 1);\n// dest[sizeof(dest) - 1] = '\\0';"
+                })
+                if "Buffer overflow danger" not in summary_parts:
+                    summary_parts.append("Buffer overflow danger.")
+
+    elif lang == "rust":
+        for idx, line in enumerate(lines, start=1):
+            if "unsafe {" in line:
+                issues.append({
+                    "type": "Bug Risk",
+                    "message": "Unsafe Rust block used. Keep unsafe code blocks isolated, well-documented, and minimized.",
+                    "line": idx,
+                    "severity": "medium",
+                    "suggestion": "// Ensure compiler invariants are maintained or avoid unsafe scopes where possible."
+                })
+                if "Unsafe Rust scope" not in summary_parts:
+                    summary_parts.append("Unsafe Rust scope.")
+
+    elif lang == "php":
+        for idx, line in enumerate(lines, start=1):
+            if " == " in line and not line.strip().startswith("//"):
+                issues.append({
+                    "type": "Bug Risk",
+                    "message": "Loose comparison '==' detected. Consider strict comparison '===' to avoid unexpected type juggling in PHP.",
+                    "line": idx,
+                    "severity": "low",
+                    "suggestion": "// Use strict comparison:\n// if ($user === 0)"
+                })
+                if "Loose comparison check" not in summary_parts:
+                    summary_parts.append("Loose comparison check.")
+            if "query(" in line and " . " in line and not line.strip().startswith("//"):
+                issues.append({
+                    "type": "Security",
+                    "message": "SQL query built with concatenation. Exposes server to potential SQL Injection.",
+                    "line": idx,
+                    "severity": "high",
+                    "suggestion": "// Use prepared statements:\n// $stmt = $conn->prepare(\"SELECT * FROM users WHERE user = ?\");\n// $stmt->bind_param(\"s\", $user);"
+                })
+                if "SQL Injection risk" not in summary_parts:
+                    summary_parts.append("SQL Injection risk.")
+
     # Clean up summary and compute dynamic confidence score
     if not issues:
         summary = "No obvious code issues found. Analysis complete."
@@ -273,11 +395,17 @@ def _detect_recursion(language: str, lines: List[str], func_names: List[str]) ->
             if language == "python":
                 if f"def {func}" in line:
                     is_def = True
-            elif language in ("javascript", "typescript"):
+            elif language in ("javascript", "typescript", "php"):
                 if f"function {func}" in line or re.search(rf"\bconst\s+{func}\s*=", line) or re.search(rf"\blet\s+{func}\s*=", line):
                     is_def = True
-            elif language == "java":
+            elif language in ("java", "cpp", "c", "csharp"):
                 if re.search(rf"\b{func}\s*\([^)]*\)\s*(?:throws\s+\w+)?\s*\{{", line):
+                    is_def = True
+            elif language == "go":
+                if f"func {func}" in line:
+                    is_def = True
+            elif language == "rust":
+                if f"fn {func}" in line:
                     is_def = True
             
             if is_def:
@@ -315,6 +443,12 @@ def _estimate_time_complexity(language: str, lines: List[str]) -> tuple[str, str
                     func_names.append(match_arrow.group(1))
         elif language == "java":
             match = re.match(r"(?:public|private|protected|static|\s)+(?:\w+<.*?>|\w+)\s+(\w+)\s*\([^)]*\)\s*(?:throws\s+\w+)?\s*\{", stripped)
+            if match and match.group(1) not in ("if", "for", "while", "switch", "catch"):
+                func_names.append(match.group(1))
+        elif language in ("cpp", "c", "csharp", "php", "rust", "go"):
+            match = re.search(r"\bfunc(?:tion)?\s+(\w+)\s*\(", stripped)
+            if not match:
+                match = re.match(r"(?:public|private|protected|static|inline|void|int|char|double|float|\s)+\s+(\w+)\s*\([^)]*\)\s*\{", stripped)
             if match and match.group(1) not in ("if", "for", "while", "switch", "catch"):
                 func_names.append(match.group(1))
 
@@ -377,16 +511,26 @@ def _estimate_space_complexity(language: str, lines: List[str]) -> tuple[str, st
             match = re.match(r"(?:async\s+)?function\s+(\w+)\s*\(", stripped)
             if match:
                 func_names.append(match.group(1))
+            else:
+                match_arrow = re.match(r"const\s+(\w+)\s*=\s*(?:\([^)]*\)|[^=]+)\s*=>", stripped)
+                if match_arrow:
+                    func_names.append(match_arrow.group(1))
         elif language == "java":
             match = re.match(r"(?:public|private|protected|static|\s)+(?:\w+<.*?>|\w+)\s+(\w+)\s*\([^)]*\)\s*(?:throws\s+\w+)?\s*\{", stripped)
             if match and match.group(1) not in ("if", "for", "while", "catch"):
+                func_names.append(match.group(1))
+        elif language in ("cpp", "c", "csharp", "php", "rust", "go"):
+            match = re.search(r"\bfunc(?:tion)?\s+(\w+)\s*\(", stripped)
+            if not match:
+                match = re.match(r"(?:public|private|protected|static|inline|void|int|char|double|float|\s)+\s+(\w+)\s*\([^)]*\)\s*\{", stripped)
+            if match and match.group(1) not in ("if", "for", "while", "switch", "catch"):
                 func_names.append(match.group(1))
 
     has_recursion, _ = _detect_recursion(language, lines, func_names)
 
     for line in lines:
         stripped = line.strip()
-        if stripped.startswith("#") or stripped.startswith("//"):
+        if stripped.startswith("#") or stripped.startswith("//") or (language == "php" and stripped.startswith("/*")):
             continue
         
         if language == "python":
@@ -418,6 +562,60 @@ def _estimate_space_complexity(language: str, lines: List[str]) -> tuple[str, st
             if "new HashSet" in line or "new TreeSet" in line:
                 has_dynamic_allocation = True
                 allocation_reasons.append("Set allocation")
+
+        elif language == "cpp":
+            if "new " in line:
+                has_dynamic_allocation = True
+                allocation_reasons.append("dynamic pointer allocation")
+            if "std::vector" in line or "vector<" in line:
+                has_dynamic_allocation = True
+                allocation_reasons.append("vector container")
+            if "std::map" in line or "map<" in line or "std::unordered_map" in line or "unordered_map<" in line:
+                has_dynamic_allocation = True
+                allocation_reasons.append("map container")
+            if "std::set" in line or "set<" in line:
+                has_dynamic_allocation = True
+                allocation_reasons.append("set container")
+                
+        elif language == "c":
+            if "malloc(" in line or "calloc(" in line or "realloc(" in line:
+                has_dynamic_allocation = True
+                allocation_reasons.append("heap memory allocation")
+                
+        elif language == "csharp":
+            if "new List<" in line or ".Add(" in line:
+                has_dynamic_allocation = True
+                allocation_reasons.append("List collection")
+            if "new Dictionary<" in line:
+                has_dynamic_allocation = True
+                allocation_reasons.append("Dictionary mapping")
+            if "new HashSet<" in line:
+                has_dynamic_allocation = True
+                allocation_reasons.append("HashSet collection")
+                
+        elif language == "go":
+            if "make(" in line or "new(" in line:
+                has_dynamic_allocation = True
+                allocation_reasons.append("make/new dynamic allocation")
+            if "append(" in line:
+                has_dynamic_allocation = True
+                allocation_reasons.append("slice growth")
+                
+        elif language == "rust":
+            if "Vec::" in line or "vec!" in line or ".push(" in line:
+                has_dynamic_allocation = True
+                allocation_reasons.append("Vec allocation")
+            if "HashMap::" in line or "BTreeMap::" in line:
+                has_dynamic_allocation = True
+                allocation_reasons.append("Map allocation")
+            if "HashSet::" in line or "BTreeSet::" in line:
+                has_dynamic_allocation = True
+                allocation_reasons.append("Set allocation")
+                
+        elif language == "php":
+            if "array(" in line or "= [" in line or "[] =" in line or "array_push(" in line:
+                has_dynamic_allocation = True
+                allocation_reasons.append("array/map allocation")
 
     if has_recursion:
         return "O(N)", "Linear space complexity. Recursion requires $O(N)$ auxiliary stack space corresponding to the call depth."

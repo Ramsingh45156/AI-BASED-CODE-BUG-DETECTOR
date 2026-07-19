@@ -39,6 +39,32 @@ const closeComplexityModalBtn = document.getElementById("close-complexity-modal-
 const timeComplexityCard = timeComplexityVal.closest(".complexity-card");
 const spaceComplexityCard = spaceComplexityVal.closest(".complexity-card");
 
+// New premium UI and Video selectors
+const tabGifBtn = document.getElementById("tab-gif-btn");
+const tabVideoBtn = document.getElementById("tab-video-btn");
+const gifDemoPanel = document.getElementById("gif-demo-panel");
+const videoTutorialPanel = document.getElementById("video-tutorial-panel");
+
+const helpVideo = document.getElementById("help-video");
+const helpVideoSource = document.getElementById("help-video-source");
+const videoOverlayPlay = document.getElementById("video-overlay-play");
+const videoPlayPause = document.getElementById("video-play-pause");
+const playPauseIcon = document.getElementById("play-pause-icon");
+const videoTimelineContainer = document.getElementById("video-timeline-container");
+const videoProgress = document.getElementById("video-progress");
+const videoTime = document.getElementById("video-time");
+const videoMute = document.getElementById("video-mute");
+const muteIcon = document.getElementById("mute-icon");
+const videoFullscreen = document.getElementById("video-fullscreen");
+const customVideoContainer = document.getElementById("custom-video-container");
+const videoPlaceholder = document.getElementById("video-placeholder");
+
+const helpVideoUpload = document.getElementById("help-video-upload");
+const uploadNameDisplay = document.getElementById("upload-name-display");
+const helpVideoUrlInput = document.getElementById("help-video-url");
+const helpVideoUrlSave = document.getElementById("help-video-url-save");
+const resetVideoBtn = document.getElementById("reset-video-btn");
+
 const severityLabels = {
   low: "Low",
   medium: "Medium",
@@ -82,28 +108,19 @@ async function performAnalysis() {
   buttonLoader.classList.remove("hidden");
 
   try {
-    const [analyzeRes, runRes] = await Promise.all([
-      fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ language, content }),
-      }),
-      fetch("/api/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ language, content }),
-      }).catch(err => {
-        return {
-          json: async () => ({ success: false, output: "Auto-execution failed: " + err.message })
-        };
-      })
-    ]);
+    const analyzeRes = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ language, content }),
+    });
 
     const data = await analyzeRes.json();
-    const runData = await runRes.json();
 
     summary.textContent = data.summary;
     confidence.textContent = `Confidence: ${Math.round(data.confidence * 100)}%`;
+
+    // Record stats
+    recordScan(data.confidence, data.issues ? data.issues.length : 0);
 
     // Apply color styling to confidence badge
     confidence.className = "score-badge"; // Reset classes
@@ -141,17 +158,6 @@ async function performAnalysis() {
     spaceComplexityVal.textContent = data.space_complexity;
     spaceComplexityReason.textContent = data.space_complexity_reason;
 
-    // Render execution output
-    executionOutput.querySelector("code").textContent = runData.output;
-    if (runData.success) {
-      executionStatus.textContent = "Success";
-      executionStatus.className = "execution-status success";
-    } else {
-      executionStatus.textContent = "Error";
-      executionStatus.className = "execution-status error";
-    }
-    executionContainer.classList.remove("hidden");
-
     issues.innerHTML = "";
     if (data.issues.length === 0) {
       issues.innerHTML = `<div class="issue" data-severity="none"><h3>No issues detected</h3><p>Your code looks clean by the current heuristic checks.</p></div>`;
@@ -163,7 +169,6 @@ async function performAnalysis() {
         
         let suggestionHtml = "";
         if (issue.suggestion) {
-          const safeSuggestion = issue.suggestion.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
           suggestionHtml = `
             <div class="issue-suggestion">
               <div class="suggestion-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
@@ -171,7 +176,7 @@ async function performAnalysis() {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg>
                   Suggested Fix:
                 </span>
-                <button type="button" class="clipboard-btn suggestion-copy-btn" onclick="navigator.clipboard.writeText(\`${safeSuggestion}\`).then(() => { this.textContent = 'Copied!'; setTimeout(() => this.textContent = 'Copy Fix', 2000); })">Copy Fix</button>
+                <button type="button" class="clipboard-btn suggestion-copy-btn">Copy Fix</button>
               </div>
               <pre class="suggestion-code"><code>${escapeHtml(issue.suggestion)}</code></pre>
             </div>
@@ -199,7 +204,7 @@ async function performAnalysis() {
       applySeverityFilter(activeFilterBtn.getAttribute("data-filter"));
     }
 
-    statusPill.textContent = "Analysis & execution complete";
+    statusPill.textContent = "Analysis complete";
     statusPill.style.background = "rgba(90, 255, 176, 0.16)";
     results.classList.remove("hidden");
   } catch (err) {
@@ -216,25 +221,10 @@ form.addEventListener("submit", async (event) => {
   performAnalysis();
 });
 
-const debouncedAnalysis = debounce(performAnalysis, 500);
-
-document.getElementById("content").addEventListener("input", () => {
-  const contentVal = document.getElementById("content").value.trim();
-  if (contentVal) {
-    debouncedAnalysis();
-  } else {
-    statusPill.textContent = "Ready";
-    statusPill.style.background = "";
-    results.classList.add("hidden");
-  }
-});
-
 document.getElementById("language").addEventListener("change", () => {
-  const contentVal = document.getElementById("content").value.trim();
-  if (contentVal) {
-    performAnalysis();
-  }
+  updateEditorTabName();
 });
+
 
 async function performExecution() {
   const language = document.getElementById("language").value;
@@ -375,7 +365,88 @@ public class BugDemo {
             e.printStackTrace();
         }
     }
-}`
+}`,
+
+  cpp: `#include <iostream>
+#include <cstring>
+
+void process() {
+    char buffer[8];
+    // TODO: bounds validation
+    std::strcpy(buffer, "This is a very long string that will overflow!"); // Buffer Overflow
+    
+    int* ptr = new int(10);
+    std::cout << "Value: " << *ptr << std::endl;
+    // FIXME: missing delete ptr; memory leak
+}`,
+
+  typescript: `function updateScore(user: any): void { // unsafe any type usage
+  console.log("Updating score for user: " + user.name);
+  
+  // TODO: implement validation check
+  const value: string = user.score as string; // unsafe type assertion
+  console.log(value!.length); // non-null assertion bypass
+}`,
+
+  csharp: `using System;
+using System.Data.SqlClient;
+
+class Program {
+    static void Main() {
+        string user = "admin";
+        // TODO: use parameterized query to prevent SQL Injection
+        string query = "SELECT * FROM Users WHERE Username = '" + user + "'";
+        Console.WriteLine("Executing: " + query);
+    }
+}`,
+
+  go: `package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	// TODO: Handle potential file read errors
+	file, _ := os.Open("config.json") // Ignoring error return value!
+	fmt.Println("File opened successfully:", file)
+}`,
+
+  c: `#include <stdio.h>
+#include <string.h>
+
+void run_c() {
+    char dest[5];
+    // TODO: check bounds
+    strcpy(dest, "LongerString"); // Buffer overflow
+    printf("Copied: %s\\n", dest);
+}`,
+
+  rust: `fn test_rust() {
+    let mut num = 5;
+    // Unnecessary mutable variable binding
+    println!("Number is: {}", num);
+    
+    // TODO: refactor unsafe memory mapping
+    unsafe {
+        let r1 = &num as *const i32;
+        println!("Raw pointer points to: {}", *r1);
+    }
+}`,
+
+  php: `<?php
+function login($user, $pass) {
+    $conn = new mysqli("localhost", "root", "", "test");
+    // TODO: use bound parameters to prevent SQL injection
+    $sql = "SELECT * FROM users WHERE user = '" . $user . "' AND pass = '" . $pass . "'";
+    $result = $conn->query($sql);
+    
+    if ($user == 0) { // Loose comparison issue
+        echo "Loose checking passed";
+    }
+}
+?>`
 };
 
 // 2. Editor Stats Counter & Live Brackets Validator
@@ -445,8 +516,8 @@ if (codeTemplateSelect) {
     if (templates[lang]) {
       document.getElementById("language").value = lang;
       document.getElementById("content").value = templates[lang];
+      updateEditorTabName();
       updateEditorStats();
-      performAnalysis();
     }
   });
 }
@@ -588,10 +659,365 @@ filterButtons.forEach(btn => {
   });
 });
 
-// 10. Register live statistics update listeners
-document.getElementById("content").addEventListener("input", updateEditorStats);
+// 10. Register live statistics update listeners & Copy Fix Delegation
+document.getElementById("content").addEventListener("input", () => {
+  updateEditorStats();
+  
+  const statusText = document.getElementById("editor-status-text");
+  if (statusText) {
+    statusText.textContent = "Editing...";
+    statusText.style.color = "var(--primary-accent)";
+  }
+
+  const contentVal = document.getElementById("content").value.trim();
+  if (!contentVal) {
+    statusPill.textContent = "Ready";
+    statusPill.style.background = "";
+    results.classList.add("hidden");
+  }
+});
+
+// Event delegation for dynamically added Copy Fix buttons to prevent syntax escape bugs
+const issuesContainer = document.getElementById("issues");
+if (issuesContainer) {
+  issuesContainer.addEventListener("click", (e) => {
+    if (e.target && e.target.classList.contains("suggestion-copy-btn")) {
+      const btn = e.target;
+      const codeBlock = btn.closest(".issue-suggestion").querySelector(".suggestion-code code");
+      if (codeBlock) {
+        const codeText = codeBlock.textContent;
+        navigator.clipboard.writeText(codeText).then(() => {
+          btn.textContent = 'Copied!';
+          setTimeout(() => {
+            btn.textContent = 'Copy Fix';
+          }, 2000);
+        });
+      }
+    }
+  });
+}
 
 // Initial trigger for empty editor stats on load
 updateEditorStats();
+updateEditorTabName();
+
+// --- STATS DASHBOARD LOGIC ---
+function initStats() {
+  const totalScans = parseInt(localStorage.getItem("total_scans") || "0");
+  const bugsFound = parseInt(localStorage.getItem("bugs_found") || "0");
+  const totalScore = parseFloat(localStorage.getItem("total_score") || "0");
+  updateStatsUI(totalScans, bugsFound, totalScore);
+}
+
+function updateStatsUI(totalScans, bugsFound, totalScore) {
+  const totalScansEl = document.getElementById("stats-total-scans");
+  const bugsFoundEl = document.getElementById("stats-bugs-found");
+  const avgScoreEl = document.getElementById("stats-avg-score");
+  
+  if (totalScansEl) totalScansEl.textContent = totalScans;
+  if (bugsFoundEl) bugsFoundEl.textContent = bugsFound;
+  
+  if (avgScoreEl) {
+    if (totalScans > 0) {
+      const avg = Math.round((totalScore / totalScans) * 100);
+      let grade = "F";
+      if (avg >= 90) grade = "A+";
+      else if (avg >= 80) grade = "A";
+      else if (avg >= 70) grade = "B";
+      else if (avg >= 50) grade = "C";
+      avgScoreEl.textContent = `${grade} (${avg}%)`;
+    } else {
+      avgScoreEl.textContent = "-%";
+    }
+  }
+}
+
+function recordScan(confidenceScore, newBugsCount) {
+  const totalScans = parseInt(localStorage.getItem("total_scans") || "0") + 1;
+  const bugsFound = parseInt(localStorage.getItem("bugs_found") || "0") + newBugsCount;
+  const totalScore = parseFloat(localStorage.getItem("total_score") || "0") + confidenceScore;
+  
+  localStorage.setItem("total_scans", totalScans.toString());
+  localStorage.setItem("bugs_found", bugsFound.toString());
+  localStorage.setItem("total_score", totalScore.toString());
+  
+  updateStatsUI(totalScans, bugsFound, totalScore);
+}
+
+// --- DYNAMIC IDE TAB RENAMING ---
+function updateEditorTabName() {
+  const lang = document.getElementById("language").value;
+  const tabTitle = document.getElementById("editor-tab-title");
+  const tabIcon = document.getElementById("editor-tab-icon");
+  const editorStatusText = document.getElementById("editor-status-text");
+  
+  let filename = "main.py";
+  let iconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+  
+  if (lang === "python") {
+    filename = "main.py";
+    iconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffe082" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2zm0 2c1.7 0 3.2.7 4.3 1.8L12 10.1l-4.3-4.3C8.8 4.7 10.3 4 12 4zm-8 8c0-1.7.7-3.2 1.8-4.3L10.1 12l-4.3 4.3C4.7 15.2 4 13.7 4 12zm8 8c-1.7 0-3.2-.7-4.3-1.8L12 13.9l4.3 4.3c-1.1 1.1-2.6 1.8-4.3 1.8zm8-8c0 1.7-.7 3.2-1.8 4.3L13.9 12l4.3-4.3c1.1 1.1 1.8 2.6 1.8 4.3z"/></svg>`;
+  } else if (lang === "javascript") {
+    filename = "app.js";
+    iconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffd54f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3V3z"/><path d="M18 17h-2.5c-.8 0-1.5-.7-1.5-1.5V11c0-.8.7-1.5 1.5-1.5H18m-6.5 7.5v-4c0-.8-.7-1.5-1.5-1.5H7.5"/></svg>`;
+  } else if (lang === "java") {
+    filename = "App.java";
+    iconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff8a65" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
+  } else if (lang === "cpp") {
+    filename = "main.cpp";
+    iconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64b5f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M15 9H9v6h6"/></svg>`;
+  } else if (lang === "typescript") {
+    filename = "app.ts";
+    iconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#29b6f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><path d="M12 8v8m-4-8h8"/></svg>`;
+  } else if (lang === "csharp") {
+    filename = "Program.cs";
+    iconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ba68c8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>`;
+  } else if (lang === "go") {
+    filename = "main.go";
+    iconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4dd0e1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>`;
+  } else if (lang === "c") {
+    filename = "main.c";
+    iconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#90a4ae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M15 12H9"/></svg>`;
+  } else if (lang === "rust") {
+    filename = "main.rs";
+    iconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffb74d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg>`;
+  } else if (lang === "php") {
+    filename = "index.php";
+    iconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7986cb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>`;
+  }
+  
+  if (tabTitle) tabTitle.textContent = filename;
+  if (tabIcon) tabIcon.innerHTML = iconSvg;
+  if (editorStatusText) {
+    editorStatusText.textContent = "Saved";
+    editorStatusText.style.color = "var(--text-muted)";
+  }
+}
+
+
+
+// --- CUSTOM HELP VIDEO & INDEXEDDB LOGIC ---
+const dbName = "HelpVideoDB";
+const storeName = "videos";
+
+function saveVideoToDB(blob, name) {
+  const request = indexedDB.open(dbName, 1);
+  request.onupgradeneeded = (e) => {
+    e.target.result.createObjectStore(storeName);
+  };
+  request.onsuccess = (e) => {
+    const db = e.target.result;
+    const tx = db.transaction(storeName, "readwrite");
+    tx.objectStore(storeName).put(blob, "custom_video");
+    localStorage.setItem("help_video_name", name);
+    localStorage.removeItem("help_video_url");
+    loadHelpVideo();
+  };
+}
+
+function loadVideoFromDB(callback) {
+  const request = indexedDB.open(dbName, 1);
+  request.onupgradeneeded = (e) => {
+    e.target.result.createObjectStore(storeName);
+  };
+  request.onsuccess = (e) => {
+    const db = e.target.result;
+    const tx = db.transaction(storeName, "readonly");
+    const getReq = tx.objectStore(storeName).get("custom_video");
+    getReq.onsuccess = () => {
+      callback(getReq.result || null);
+    };
+    getReq.onerror = () => callback(null);
+  };
+  request.onerror = () => callback(null);
+}
+
+function clearVideoFromDB() {
+  const request = indexedDB.open(dbName, 1);
+  request.onsuccess = (e) => {
+    const db = e.target.result;
+    const tx = db.transaction(storeName, "readwrite");
+    tx.objectStore(storeName).delete("custom_video");
+    localStorage.removeItem("help_video_name");
+    localStorage.removeItem("help_video_url");
+    showVideoPlaceholder();
+  };
+}
+
+function loadHelpVideo() {
+  const customUrl = localStorage.getItem("help_video_url");
+  const customName = localStorage.getItem("help_video_name");
+  
+  if (customUrl) {
+    helpVideoSource.src = customUrl;
+    helpVideo.load();
+    if (videoPlaceholder) videoPlaceholder.classList.add("hidden");
+    if (customVideoContainer) customVideoContainer.classList.remove("hidden");
+    if (uploadNameDisplay) uploadNameDisplay.textContent = `URL: ${customUrl.substring(0, 30)}...`;
+    if (helpVideoUrlInput) helpVideoUrlInput.value = customUrl;
+  } else if (customName) {
+    if (uploadNameDisplay) uploadNameDisplay.textContent = `Loading ${customName}...`;
+    loadVideoFromDB((blob) => {
+      if (blob) {
+        const objectUrl = URL.createObjectURL(blob);
+        helpVideoSource.src = objectUrl;
+        helpVideo.load();
+        if (videoPlaceholder) videoPlaceholder.classList.add("hidden");
+        if (customVideoContainer) customVideoContainer.classList.remove("hidden");
+        if (uploadNameDisplay) uploadNameDisplay.textContent = customName;
+      } else {
+        loadDefaultStaticVideo();
+      }
+    });
+  } else {
+    loadDefaultStaticVideo();
+  }
+}
+
+function loadDefaultStaticVideo() {
+  helpVideoSource.src = "/static/help.mp4";
+  helpVideo.load();
+  if (videoPlaceholder) videoPlaceholder.classList.add("hidden");
+  if (customVideoContainer) customVideoContainer.classList.remove("hidden");
+  if (uploadNameDisplay) uploadNameDisplay.textContent = "Default Video (/static/help.mp4)";
+}
+
+function showVideoPlaceholder() {
+  loadDefaultStaticVideo();
+}
+
+function formatTime(seconds) {
+  if (isNaN(seconds)) return "0:00";
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+}
+
+// Help Modal Tabs Switch
+if (tabGifBtn && tabVideoBtn) {
+  tabGifBtn.addEventListener("click", () => {
+    tabGifBtn.classList.add("active");
+    tabVideoBtn.classList.remove("active");
+    gifDemoPanel.classList.remove("hidden");
+    videoTutorialPanel.classList.add("hidden");
+    if (helpVideo) helpVideo.pause();
+  });
+
+  tabVideoBtn.addEventListener("click", () => {
+    tabVideoBtn.classList.add("active");
+    tabGifBtn.classList.remove("active");
+    videoTutorialPanel.classList.remove("hidden");
+    gifDemoPanel.classList.add("hidden");
+  });
+}
+
+// Video Player Custom Controls setup
+if (helpVideo) {
+  const togglePlay = () => {
+    if (helpVideo.paused) {
+      helpVideo.play();
+    } else {
+      helpVideo.pause();
+    }
+  };
+
+  if (videoPlayPause) videoPlayPause.addEventListener("click", togglePlay);
+  if (videoOverlayPlay) videoOverlayPlay.addEventListener("click", togglePlay);
+  helpVideo.addEventListener("click", togglePlay);
+
+  helpVideo.addEventListener("play", () => {
+    if (customVideoContainer) customVideoContainer.classList.add("playing");
+    if (playPauseIcon) {
+      playPauseIcon.innerHTML = `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`;
+    }
+  });
+
+  helpVideo.addEventListener("pause", () => {
+    if (customVideoContainer) customVideoContainer.classList.remove("playing");
+    if (playPauseIcon) {
+      playPauseIcon.innerHTML = `<path d="M8 5v14l11-7z"/>`;
+    }
+  });
+
+  helpVideo.addEventListener("timeupdate", () => {
+    if (helpVideo.duration) {
+      const progressPercent = (helpVideo.currentTime / helpVideo.duration) * 100;
+      if (videoProgress) videoProgress.style.width = `${progressPercent}%`;
+      if (videoTime) {
+        videoTime.textContent = `${formatTime(helpVideo.currentTime)} / ${formatTime(helpVideo.duration)}`;
+      }
+    }
+  });
+
+  if (videoTimelineContainer) {
+    videoTimelineContainer.addEventListener("click", (e) => {
+      const rect = videoTimelineContainer.getBoundingClientRect();
+      const pos = (e.clientX - rect.left) / rect.width;
+      helpVideo.currentTime = pos * helpVideo.duration;
+    });
+  }
+
+  if (videoMute) {
+    videoMute.addEventListener("click", () => {
+      helpVideo.muted = !helpVideo.muted;
+      if (helpVideo.muted) {
+        if (muteIcon) {
+          muteIcon.innerHTML = `<path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" stroke-width="2"/>`;
+        }
+      } else {
+        if (muteIcon) {
+          muteIcon.innerHTML = `<path d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>`;
+        }
+      }
+    });
+  }
+
+  if (videoFullscreen) {
+    videoFullscreen.addEventListener("click", () => {
+      if (customVideoContainer) {
+        if (!document.fullscreenElement) {
+          customVideoContainer.requestFullscreen().catch(err => {
+            console.error("Error fullscreen:", err);
+          });
+        } else {
+          document.exitFullscreen();
+        }
+      }
+    });
+  }
+}
+
+// File and URL handlers
+if (helpVideoUpload) {
+  helpVideoUpload.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (uploadNameDisplay) uploadNameDisplay.textContent = `Saving ${file.name}...`;
+      saveVideoToDB(file, file.name);
+    }
+  });
+}
+
+if (helpVideoUrlSave) {
+  helpVideoUrlSave.addEventListener("click", () => {
+    const url = helpVideoUrlInput.value.trim();
+    if (url) {
+      localStorage.setItem("help_video_url", url);
+      localStorage.removeItem("help_video_name");
+      clearVideoFromDB();
+      loadHelpVideo();
+    }
+  });
+}
+
+if (resetVideoBtn) {
+  resetVideoBtn.addEventListener("click", () => {
+    clearVideoFromDB();
+  });
+}
+
+// Initialize Stats and Help Video on page load
+initStats();
+loadHelpVideo();
 
 
