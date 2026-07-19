@@ -166,7 +166,7 @@ async function performAnalysis() {
         const card = document.createElement("div");
         card.className = "issue";
         card.setAttribute("data-severity", issue.severity);
-        
+
         let suggestionHtml = "";
         if (issue.suggestion) {
           suggestionHtml = `
@@ -249,9 +249,9 @@ async function performExecution() {
     });
 
     const data = await response.json();
-    
+
     executionOutput.querySelector("code").textContent = data.output;
-    
+
     if (data.success) {
       executionStatus.textContent = "Success";
       executionStatus.className = "execution-status success";
@@ -259,7 +259,7 @@ async function performExecution() {
       executionStatus.textContent = "Error";
       executionStatus.className = "execution-status error";
     }
-    
+
     executionContainer.classList.remove("hidden");
     results.classList.remove("hidden");
     statusPill.textContent = data.success ? "Execution complete" : "Execution failed";
@@ -337,7 +337,7 @@ const templates = {
             eval(val) # Risk of injection
     except: # Bare except clause
         pass`,
-        
+
   javascript: `async function loadData() {
     var query = "test"; // Legacy var
     console.log("Searching for: " + query); // Console log
@@ -452,18 +452,18 @@ function login($user, $pass) {
 // 2. Editor Stats Counter & Live Brackets Validator
 function updateEditorStats() {
   const content = document.getElementById("content").value;
-  
+
   // Calculate lines, words, chars
   const lines = content.split('\n').filter(l => l.trim().length > 0).length;
   const words = content.split(/\s+/).filter(w => w.length > 0).length;
   const chars = content.length;
   const readTime = Math.ceil(words / 150); // Assumes ~150 words per minute review speed
-  
+
   statLines.textContent = `${lines} Line${lines !== 1 ? 's' : ''}`;
   statWords.textContent = `${words} Word${words !== 1 ? 's' : ''}`;
   statChars.textContent = `${chars} Char${chars !== 1 ? 's' : ''}`;
   statReadTime.textContent = `~${readTime}s review`;
-  
+
   // Live Bracket Matching
   const isBalanced = validateBrackets(content);
   if (isBalanced) {
@@ -482,7 +482,7 @@ function validateBrackets(code) {
   const open = ['(', '{', '['];
   const close = [')', '}', ']'];
   const matches = { ')': '(', '}': '{', ']': '[' };
-  
+
   for (let char of code) {
     if (open.includes(char)) {
       stack.push(char);
@@ -566,14 +566,14 @@ if (exportReportBtn) {
       alert("Please write some code first to generate a report.");
       return;
     }
-    
+
     const scoreText = confidence.textContent;
     const gradeText = qualityGrade.textContent;
     const summaryText = summary.textContent;
     const timeComp = timeComplexityVal.textContent;
     const spaceComp = spaceComplexityVal.textContent;
     const execution = executionOutput.querySelector("code").textContent;
-    
+
     let reportMd = `# BugShield AI - Code Audit Report\n\n`;
     reportMd += `## Executive Summary\n`;
     reportMd += `- **Quality Grade**: ${gradeText}\n`;
@@ -582,7 +582,7 @@ if (exportReportBtn) {
     reportMd += `## Complexity Profile\n`;
     reportMd += `- **Time Complexity**: ${timeComp}\n`;
     reportMd += `- **Space Complexity**: ${spaceComp}\n\n`;
-    
+
     reportMd += `## Static Analysis Findings\n`;
     const issueCards = document.querySelectorAll(".issue");
     if (issueCards.length === 0 || (issueCards.length === 1 && issueCards[0].getAttribute("data-severity") === "none")) {
@@ -594,7 +594,7 @@ if (exportReportBtn) {
         const msg = card.querySelector("p").textContent;
         const line = card.querySelector(".issue-meta span").textContent;
         const suggestion = card.querySelector(".suggestion-code code");
-        
+
         reportMd += `### Finding ${idx + 1}: [${severity}] ${type}\n`;
         reportMd += `- **Location**: ${line}\n`;
         reportMd += `- **Analysis**: ${msg}\n`;
@@ -604,11 +604,11 @@ if (exportReportBtn) {
         reportMd += `\n`;
       });
     }
-    
+
     reportMd += `## Live Code Execution logs\n`;
     reportMd += `\`\`\`\n${execution.trim()}\n\`\`\`\n\n`;
     reportMd += `Report generated on: ${new Date().toLocaleString()}\n`;
-    
+
     const blob = new Blob([reportMd], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -627,20 +627,20 @@ if (timeComplexityCard && spaceComplexityCard && complexityModal && closeComplex
     complexityModal.classList.remove("hidden");
     setTimeout(() => complexityModal.classList.add("active"), 10);
   };
-  
+
   const closeComplexityModal = () => {
     complexityModal.classList.remove("active");
     setTimeout(() => complexityModal.classList.add("hidden"), 300);
   };
-  
+
   timeComplexityCard.addEventListener("click", openComplexityModal);
   spaceComplexityCard.addEventListener("click", openComplexityModal);
   closeComplexityModalBtn.addEventListener("click", closeComplexityModal);
-  
+
   complexityModal.addEventListener("click", (e) => {
     if (e.target === complexityModal) closeComplexityModal();
   });
-  
+
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !complexityModal.classList.contains("hidden")) {
       closeComplexityModal();
@@ -662,7 +662,7 @@ filterButtons.forEach(btn => {
 // 10. Register live statistics update listeners & Copy Fix Delegation
 document.getElementById("content").addEventListener("input", () => {
   updateEditorStats();
-  
+
   const statusText = document.getElementById("editor-status-text");
   if (statusText) {
     statusText.textContent = "Editing...";
@@ -713,10 +713,10 @@ function updateStatsUI(totalScans, bugsFound, totalScore) {
   const totalScansEl = document.getElementById("stats-total-scans");
   const bugsFoundEl = document.getElementById("stats-bugs-found");
   const avgScoreEl = document.getElementById("stats-avg-score");
-  
+
   if (totalScansEl) totalScansEl.textContent = totalScans;
   if (bugsFoundEl) bugsFoundEl.textContent = bugsFound;
-  
+
   if (avgScoreEl) {
     if (totalScans > 0) {
       const avg = Math.round((totalScore / totalScans) * 100);
@@ -736,11 +736,11 @@ function recordScan(confidenceScore, newBugsCount) {
   const totalScans = parseInt(localStorage.getItem("total_scans") || "0") + 1;
   const bugsFound = parseInt(localStorage.getItem("bugs_found") || "0") + newBugsCount;
   const totalScore = parseFloat(localStorage.getItem("total_score") || "0") + confidenceScore;
-  
+
   localStorage.setItem("total_scans", totalScans.toString());
   localStorage.setItem("bugs_found", bugsFound.toString());
   localStorage.setItem("total_score", totalScore.toString());
-  
+
   updateStatsUI(totalScans, bugsFound, totalScore);
 }
 
@@ -750,10 +750,10 @@ function updateEditorTabName() {
   const tabTitle = document.getElementById("editor-tab-title");
   const tabIcon = document.getElementById("editor-tab-icon");
   const editorStatusText = document.getElementById("editor-status-text");
-  
+
   let filename = "main.py";
   let iconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>`;
-  
+
   if (lang === "python") {
     filename = "main.py";
     iconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffe082" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2zm0 2c1.7 0 3.2.7 4.3 1.8L12 10.1l-4.3-4.3C8.8 4.7 10.3 4 12 4zm-8 8c0-1.7.7-3.2 1.8-4.3L10.1 12l-4.3 4.3C4.7 15.2 4 13.7 4 12zm8 8c-1.7 0-3.2-.7-4.3-1.8L12 13.9l4.3 4.3c-1.1 1.1-2.6 1.8-4.3 1.8zm8-8c0 1.7-.7 3.2-1.8 4.3L13.9 12l4.3-4.3c1.1 1.1 1.8 2.6 1.8 4.3z"/></svg>`;
@@ -785,7 +785,7 @@ function updateEditorTabName() {
     filename = "index.php";
     iconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7986cb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>`;
   }
-  
+
   if (tabTitle) tabTitle.textContent = filename;
   if (tabIcon) tabIcon.innerHTML = iconSvg;
   if (editorStatusText) {
@@ -847,7 +847,7 @@ function clearVideoFromDB() {
 function loadHelpVideo() {
   const customUrl = localStorage.getItem("help_video_url");
   const customName = localStorage.getItem("help_video_name");
-  
+
   if (customUrl) {
     helpVideoSource.src = customUrl;
     helpVideo.load();
@@ -875,11 +875,11 @@ function loadHelpVideo() {
 }
 
 function loadDefaultStaticVideo() {
-  helpVideoSource.src = "/static/help.mp4";
+  helpVideoSource.src = "/public/help.mp4";
   helpVideo.load();
   if (videoPlaceholder) videoPlaceholder.classList.add("hidden");
   if (customVideoContainer) customVideoContainer.classList.remove("hidden");
-  if (uploadNameDisplay) uploadNameDisplay.textContent = "Default Video (/static/help.mp4)";
+  if (uploadNameDisplay) uploadNameDisplay.textContent = "Default Video (/public/help.mp4)";
 }
 
 function showVideoPlaceholder() {
