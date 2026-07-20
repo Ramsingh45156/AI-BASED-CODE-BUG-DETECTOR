@@ -1,0 +1,9 @@
+[build]
+  # Navigate to the frontend directory before building
+  base = "frontend"
+
+  # Run the Vite build command inside the frontend directory
+  command = "npm run build"
+
+  # Publish the compiled assets from the Vite output folder (frontend/dist)
+  publish = "dist"*
