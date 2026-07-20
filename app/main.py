@@ -24,7 +24,7 @@ app.include_router(review.router, prefix="/api")
 # Configure directories using absolute paths
 templates_dir = os.path.join(current_dir, "templates")
 static_dir = os.path.join(current_dir, "static")
-public_dir = os.path.join(root_dir, "public")
+public_dir = os.path.join(current_dir, "public")
 
 templates = Jinja2Templates(directory=templates_dir)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
