@@ -1,5 +1,4 @@
 {
-  "dependencies": {
-    "vercel": "^56.3.2"
-  }
+  "name": "ai-based-code-bug-detector",
+  "version": "1.0.0"
 }
